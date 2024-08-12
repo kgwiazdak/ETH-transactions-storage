@@ -68,18 +68,32 @@ logger.addHandler(lfh)
 
 try:
     logger.info("Trying to connect to " + dbname + " database…")
-    conn = psycopg2.connect(database=dbname)
+    conn = psycopg2.connect(dsn=dbname)
     conn.autocommit = True
     logger.info("Connected to the database")
 except:
+    logger.error(dbname)
     logger.error("Unable to connect to database")
     exit(1)
 
 # Delete last block as it may be not imported in full
 cur = conn.cursor()
+cur.execute('''
+    CREATE TABLE IF NOT EXISTS public.ethtxs (
+        time BIGINT,
+        txfrom TEXT,
+        txto TEXT,
+        value TEXT,
+        gas BIGINT,
+        gasprice TEXT,
+        block BIGINT,
+        txhash TEXT,
+        contract_to TEXT,
+        contract_value TEXT
+    )
+''')
 cur.execute('DELETE FROM public.ethtxs WHERE block = (SELECT Max(block) from public.ethtxs)')
 cur.close()
-conn.close()
 
 # Wait for the node to be in sync before indexing
 while web3.eth.syncing != False:
@@ -125,17 +139,19 @@ def insertTxsFromBlock(block):
             'INSERT INTO public.ethtxs(time, txfrom, txto, value, gas, gasprice, block, txhash, contract_to, contract_value) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)',
             (time, fr, to, value, gas, gasprice, blockid, txhash, contract_to, contract_value))
 
-# Fetch all of new (not in index) Ethereum blocks and add transactions to index
+# # Fetch all of new (not in index) Ethereum blocks and add transactions to index
+# cur.close()
+# conn.close()
 while True:
-    try:
-        conn = psycopg2.connect(database=dbname)
-        conn.autocommit = True
-    except:
-        logger.error("Unable to connect to database")
+    # try:
+    #     conn = psycopg2.connect(database=dbname)
+    #     conn.autocommit = True
+    # except Exception as e:
+    #     logger.error(e)
 
-    cur = conn.cursor()
+    cur = conn.cursor() 
 
-    cur.execute('SELECT Max(block) from public.ethtxs')
+    xd = cur.execute('SELECT Max(block) from public.ethtxs')
     maxblockindb = cur.fetchone()[0]
     # On first start, we index transactions from a block number you indicate
     if maxblockindb is None:
@@ -152,6 +168,7 @@ while True:
             logger.info('Block ' + str(blockHeight) + ' with ' + str(len(block.transactions)) + ' transactions is processed')
         else:
             logger.info('Block ' + str(blockHeight) + ' does not contain transactions')
-    cur.close()
-    conn.close()
+    # cur.close()
+    # conn.close()
+    logger.info('Sleeping for ' + pollingPeriod + ' seconds')
     time.sleep(int(pollingPeriod))

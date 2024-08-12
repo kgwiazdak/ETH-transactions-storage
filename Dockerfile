@@ -10,7 +10,5 @@ RUN mkdir /eth-storage
 
 COPY ./ethsync.py /eth-storage
 
-ENV DB_NAME=yourDB
-
 WORKDIR /eth-storage
 ENTRYPOINT [ "python3.6", "./ethsync.py" ]
