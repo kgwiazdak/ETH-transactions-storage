@@ -34,16 +34,6 @@ if nodeUrl == None:
     print('Add eth url in env var ETH_URL')
     exit(2)
 
-# Connect to Ethereum node
-if nodeUrl.startswith("http"):
-    web3 = Web3(Web3.HTTPProvider(nodeUrl)) # "http://publicnode:8545"
-elif nodeUrl.startswith("ws"):
-    web3 = Web3(Web3.WebsocketProvider(nodeUrl)) # "ws://publicnode:8546"
-else:
-    web3 = Web3(Web3.IPCProvider(nodeUrl)) # "/home/geth/.ethereum/geth.ipc"
-
-web3.middleware_onion.inject(geth_poa_middleware, layer=0)
-
 # Start logger
 #logger = logging.getLogger("EthIndexerLog")
 logger = logging.getLogger("eth-sync")
@@ -57,6 +47,26 @@ else:
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 lfh.setFormatter(formatter)
 logger.addHandler(lfh)
+
+# Connect to Ethereum node
+if nodeUrl.startswith("http"):
+    web3 = Web3(Web3.HTTPProvider(nodeUrl)) # "http://publicnode:8545"
+elif nodeUrl.startswith("ws"):
+    dupa = Web3.WebsocketProvider(nodeUrl)
+    web3 = Web3(Web3.WebsocketProvider(nodeUrl)) # "ws://publicnode:8546"
+else:
+    web3 = Web3(Web3.IPCProvider(nodeUrl)) # "/home/geth/.ethereum/geth.ipc"
+
+web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
+
+
+# check whether web3 is connected
+if web3.isConnected() == False:
+    logger.error("Unable to connect to Ethereum node")
+    exit(1)
+else:
+    logger.info("Connected to Ethereum node SIUUUU")
 
 # Systemd logger, if we want to user journalctl logs
 # Install systemd-python and
@@ -96,6 +106,7 @@ cur.execute('DELETE FROM public.ethtxs WHERE block = (SELECT Max(block) from pub
 cur.close()
 
 # Wait for the node to be in sync before indexing
+logger.info("Jeszcze działa")
 while web3.eth.syncing != False:
     # Change with the time, in second, do you want to wait
     # before checking again, default is 5 minutes
